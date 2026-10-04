@@ -18,7 +18,7 @@ def write_output(input_path, text, confidence):
 
     data = {"text": text, "confidence": confidence}
     
-    with open(output_path, "w") as f :
+    with open(output_path, "w", encoding="utf-8") as f :
         json.dump(data, f)
 
 def read_text(image):
