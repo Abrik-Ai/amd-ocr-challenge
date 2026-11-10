@@ -45,8 +45,29 @@ def tiny(img):
     small = img.resize((img.width // 4, img.height // 4))
     return small.resize((img.width, img.height), Image.Resampling.NEAREST)
 
+
+def dark_blur(img):
+    return blur(dark(img))          # done as the example
+
+
+def skew_noise(img):
+    # TODO: skew first, then noise
+    return noise(skew(img))
+
+
+def tiny_lowcontrast(img):
+    # TODO: tiny first, then low contrast
+    return low_contrast(tiny((img)))
+
+
+def worst(img):
+    # TODO: chain FOUR transforms: skew, dark, blur, noise (in that order)
+    return noise(blur(dark(skew(img))))
+
 TRANSFORMS = {"blur": blur, "dark": dark, "noise": noise,
-              "lowcontrast": low_contrast, "skew": skew, "tiny": tiny}
+              "lowcontrast": low_contrast, "skew": skew, "tiny": tiny,
+              "darkblur": dark_blur, "skewnoise": skew_noise,
+              "tinylowcontrast": tiny_lowcontrast, "worst": worst}
 
 expected = json.load(open(SRC / "expected.json", encoding="utf-8"))
 DST.mkdir(exist_ok=True)
