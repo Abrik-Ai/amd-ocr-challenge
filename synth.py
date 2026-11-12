@@ -1,4 +1,5 @@
 import json
+import math
 import random
 from pathlib import Path
 
@@ -117,6 +118,88 @@ def random_cn_plate(rng):
     return cn_plate(text), text
 
 
+# --- Road signs -----------------------------------------------------------------
+BLACK, WHITE = (20, 20, 20), (245, 245, 245)
+STOP_RED, WARN_YELLOW, WORK_ORANGE = (190, 30, 35), (245, 200, 30), (240, 120, 30)
+SKIES = [(150, 185, 215), (190, 205, 215), (120, 150, 110), (170, 170, 165)]   # backgrounds
+
+# work zone signs are orange, other warnings yellow; each entry is the sign's lines
+WORK_SIGNS = [["ROAD", "WORK", "AHEAD"], ["RIGHT", "LANE", "CLOSED"], ["DETOUR", "AHEAD"],
+              ["FLAGGER", "AHEAD"], ["END", "ROAD WORK"], ["SHOULDER", "CLOSED"],
+              ["ONE LANE", "ROAD", "AHEAD"]]
+WARN_SIGNS = [["ICY", "BRIDGE"], ["BRIDGE", "ICES BEFORE", "ROAD"], ["LOOSE", "GRAVEL"],
+              ["FALLING", "ROCKS"], ["NARROW", "BRIDGE"], ["SLOW", "TRAFFIC", "AHEAD"]]
+
+
+def sign_canvas(rng, S=560):
+    """Square background with a pole; the sign is drawn on top of it."""
+    img = Image.new("RGB", (S, S), rng.choice(SKIES))
+    d = ImageDraw.Draw(img)
+    d.rectangle((S // 2 - 12, S // 2, S // 2 + 12, S), fill=(110, 110, 115))   # pole
+    return img, d, S
+
+
+def draw_lines(d, lines, cx, cy, max_width, line_h, color):
+    """Stacked lines centred around (cx, cy); one font size for all, fitted to the widest."""
+    widest = max(lines, key=len)
+    font = fit_font(d, widest, int(line_h * 0.85), max_width)
+    top = cy - line_h * (len(lines) - 1) / 2
+    for k, line in enumerate(lines):
+        d.text((cx, top + k * line_h), line, font=font, fill=color, anchor="mm")
+
+
+def stop_sign(rng):
+    img, d, S = sign_canvas(rng)
+    c, r = S / 2, S * 0.42
+    pts = [(c + r * math.cos(math.radians(22.5 + 45 * k)),
+            c + r * math.sin(math.radians(22.5 + 45 * k))) for k in range(8)]
+    d.polygon(pts, fill=WHITE)
+    inner = [(c + (x - c) * 0.92, c + (y - c) * 0.92) for x, y in pts]
+    d.polygon(inner, fill=STOP_RED)
+    draw_lines(d, ["STOP"], c, c, 0.62 * S, 0.30 * S, WHITE)
+    return img, "STOP"
+
+
+def speed_limit_sign(rng):
+    img, d, S = sign_canvas(rng)
+    speed = rng.randrange(15, 80, 5)
+    box = (S * 0.22, S * 0.08, S * 0.78, S * 0.82)
+    d.rounded_rectangle(box, radius=18, fill=WHITE, outline=BLACK, width=7)
+    w = box[2] - box[0]
+    draw_lines(d, ["SPEED", "LIMIT"], S / 2, S * 0.27, 0.8 * w, 0.13 * S, BLACK)
+    draw_lines(d, [str(speed)], S / 2, S * 0.60, 0.8 * w, 0.32 * S, BLACK)
+    return img, f"SPEED LIMIT {speed}"
+
+
+def advisory_plaque(rng):
+    """Yellow square plaque with a number and no words (the challenge's convention)."""
+    img, d, S = sign_canvas(rng)
+    speed = rng.randrange(15, 60, 5)
+    box = (S * 0.22, S * 0.15, S * 0.78, S * 0.71)
+    d.rounded_rectangle(box, radius=16, fill=WARN_YELLOW, outline=BLACK, width=7)
+    draw_lines(d, [str(speed)], S / 2, (box[1] + box[3]) / 2, 0.42 * S, 0.40 * S, BLACK)
+    return img, str(speed)
+
+
+def warning_sign(rng):
+    """Diamond with 1-3 lines of text; orange for work zone signs, yellow otherwise."""
+    img, d, S = sign_canvas(rng)
+    work = rng.random() < 0.5
+    lines = rng.choice(WORK_SIGNS if work else WARN_SIGNS)
+    c, r = S / 2, S * 0.46
+    d.polygon([(c, c - r), (c + r, c), (c, c + r), (c - r, c)], fill=BLACK)
+    r2 = r * 0.94
+    d.polygon([(c, c - r2), (c + r2, c), (c, c + r2), (c - r2, c)],
+              fill=WORK_ORANGE if work else WARN_YELLOW)
+    # text must fit inside the diamond: narrower block the more lines there are
+    line_h = S * (0.13 if len(lines) == 3 else 0.17)
+    draw_lines(d, lines, c, c, S * (0.44 if len(lines) == 3 else 0.58), line_h, BLACK)
+    return img, " ".join(lines)
+
+
+SIGN_MAKERS = [(stop_sign, 3), (speed_limit_sign, 4), (advisory_plaque, 3), (warning_sign, 6)]
+
+
 if __name__ == "__main__":
     rng = random.Random(0)          # fixed seed: same plates every run
     DST.mkdir(exist_ok=True)
@@ -131,6 +214,14 @@ if __name__ == "__main__":
         name = f"synth-cn-{i:03d}.png"
         img.save(DST / name)
         expected[name] = answer
+    i = 0
+    for maker, count in SIGN_MAKERS:
+        for _ in range(count):
+            img, answer = maker(rng)
+            name = f"synth-sign-{i:03d}.png"
+            img.save(DST / name)
+            expected[name] = answer
+            i += 1
     json.dump(expected, open(DST / "expected.json", "w", encoding="utf-8"),
               ensure_ascii=False, indent=2)
     print(f"wrote {len(expected)} images to {DST}")
