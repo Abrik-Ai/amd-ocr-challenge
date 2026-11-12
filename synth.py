@@ -5,6 +5,10 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"   # path from fc-list
+# Chinese font: a .ttc file holds several fonts; index 2 = Simplified Chinese (SC).
+# Check yours with: fc-list -f '%{file} | %{index} | %{family[0]}\n' | grep -i NotoSansCJK-Bold
+CJK_FONT = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+CJK_INDEX = 2
 
 ROOT = Path(__file__).parent
 DST = ROOT / "samples_synth"
@@ -28,12 +32,12 @@ SCHEMES = [
 ]
 
 
-def fit_font(d, text, size, max_width, min_size=12):
+def fit_font(d, text, size, max_width, min_size=12, path=FONT, index=0):
     """Largest font, starting at `size`, whose text fits in max_width pixels."""
-    font = ImageFont.truetype(FONT, size=size)
+    font = ImageFont.truetype(path, size=size, index=index)
     while d.textlength(text, font=font) > max_width and size > min_size:
         size -= 2
-        font = ImageFont.truetype(FONT, size=size)
+        font = ImageFont.truetype(path, size=size, index=index)
     return font
 
 
@@ -82,6 +86,37 @@ def random_us_plate(rng):
     return img, number
 
 
+# --- Chinese plates -------------------------------------------------------------
+# Province abbreviations (one character each): the first character of every plate
+PROVINCES = "京津沪渝冀晋辽吉黑苏浙皖闽赣鲁豫鄂湘粤桂琼川贵云陕甘青宁新藏蒙"
+CN_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ"   # no I, O on Chinese plates
+CN_BLUE = (20, 70, 170)
+
+
+def cn_plate(text):
+    """Standard blue Chinese plate: white characters, white inner border."""
+    W, H = 600, 190                          # real plates are ~440 x 140 mm, about 3:1
+    M = 40
+    img = Image.new("RGB", (W + 2 * M, H + 2 * M), (95, 95, 100))
+    d = ImageDraw.Draw(img)
+
+    d.rounded_rectangle((M, M, M + W, M + H), radius=14, fill=CN_BLUE)
+    d.rounded_rectangle((M + 8, M + 8, M + W - 8, M + H - 8), radius=10,
+                        outline=(240, 240, 240), width=4)
+
+    font = fit_font(d, text, 130, 0.88 * W, path=CJK_FONT, index=CJK_INDEX)
+    d.text((M + W // 2, M + H // 2), text, font=font, fill=(245, 245, 245), anchor="mm")
+    return img
+
+
+def random_cn_plate(rng):
+    """One random blue plate: province + city letter + '·' + 5 characters."""
+    serial = "".join(rng.choice(CN_LETTERS) if rng.random() < 0.25 else str(rng.randint(0, 9))
+                     for _ in range(5))
+    text = f"{rng.choice(PROVINCES)}{rng.choice(CN_LETTERS)}·{serial}"
+    return cn_plate(text), text
+
+
 if __name__ == "__main__":
     rng = random.Random(0)          # fixed seed: same plates every run
     DST.mkdir(exist_ok=True)
@@ -89,6 +124,11 @@ if __name__ == "__main__":
     for i in range(20):
         img, answer = random_us_plate(rng)
         name = f"synth-us-{i:03d}.png"
+        img.save(DST / name)
+        expected[name] = answer
+    for i in range(10):
+        img, answer = random_cn_plate(rng)
+        name = f"synth-cn-{i:03d}.png"
         img.save(DST / name)
         expected[name] = answer
     json.dump(expected, open(DST / "expected.json", "w", encoding="utf-8"),
