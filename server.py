@@ -10,7 +10,12 @@ MODEL_DIR = os.environ.get("MODEL_DIR", ocr.MODEL_DIR)
 print(f"loading model from {MODEL_DIR} ...", flush=True)
 # TODO 1: load the model ONCE, here at module level, with ocr.load(...)
 model, processor = ocr.load(MODEL_DIR)
-print("model loaded, serving", flush=True)
+
+# warm-up: one inference on a blank image, so the first real image is fast
+from PIL import Image
+Image.new("RGB", (64, 64), "white").save("/tmp/warmup.png")
+ocr.read(model, processor, "/tmp/warmup.png")
+print("model loaded, warmed up, serving", flush=True)
 
 
 class Handler(BaseHTTPRequestHandler):
