@@ -24,3 +24,12 @@
 - torch is in /opt/venv on the base image; a separate venv can't see it -> install into /opt/venv (as the container will).
 - requirements.txt: transformers==5.23.0 + accelerate, from pip freeze on this base. TODO: pin all added deps (before/after freeze diff).
 - Open question: does the harness wait for anything (HEALTHCHECK?) before the first app.py call? If not, images lost ~ load time / 25 s. Measured load 20 s -> 0 lost.
+
+## Status (2026-11-14): ready to build, waiting for an MI300X
+- Done: prompt + fix_cn_serial, server/app pipeline, 200/200 on AMD W7900D, Dockerfile, .dockerignore, check_gates.sh
+- Next: AMD Developer Cloud VM (1x MI300X, ROCm Software 10.1 image, on-demand) -> runbook in chat
+- Blocked: "out of GPUs" in atl1 -> check devcloud.amd.com a few times a day
+- Billing page shows "ACTION NEEDED" -> fix before the VM is available
+- Deadline: challenges close 1 Dec; credits expire ~3 Dec
+- Plan B if no GPU by ~20 Nov: build + push from Windows (Docker Desktop, WSL 2)
+- TODO after push: move the Docker token out of ~/docker_credent.md
