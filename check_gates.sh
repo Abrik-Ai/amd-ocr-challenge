@@ -33,7 +33,7 @@ docker run --rm --entrypoint sh "$IMAGE" -c '
   test -d /models && echo "  PASS  /models exists ($(du -sh /models | cut -f1))" || echo "  FAIL  /models missing"
   echo "  INFO  python3 -> $(command -v python3)"
   python3 -c "import torch, transformers; print(\"  INFO  torch\", torch.__version__, \"| transformers\", transformers.__version__)"
-  found=$(find / -xdev \( -name ".env" -o -name "*.pem" -o -name "id_rsa*" \) 2>/dev/null | head -n 5)
+  found=$( (find / -xdev \( -name ".env" -o -name "id_rsa*" -o -name "id_ed25519*" \) 2>/dev/null; grep -rlI "PRIVATE KEY-----" /app /models /root 2>/dev/null) | head -n 5)
   test -z "$found" && echo "  PASS  no .env / key files found" || echo "  FAIL  possible secrets: $found"
 ' | tee /tmp/gate_contents.txt
 grep -q "FAIL" /tmp/gate_contents.txt && FAIL=1
