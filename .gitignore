@@ -9,3 +9,8 @@ samples_hard.zip
 synth_test*.png
 synth_test*.png
 samples_synth/
+*.zip
+docker*.md
+ssh
+ssh.pub
+id_*
