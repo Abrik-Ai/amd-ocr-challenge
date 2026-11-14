@@ -7,8 +7,8 @@ WORKDIR /app
 # 3. Install our packages first (requirements.txt into /app, then pip install)
 #    hint: torch lives in /opt/venv, so use that pip; add --no-cache-dir to keep the image smaller
 COPY requirements.txt /app/
-RUN /opt/venv/bin/pip install --no-cache-dir -r /app/requirements.txt
-
+RUN /opt/venv/bin/pip install --no-cache-dir -r /app/requirements.txt \
+ && /opt/venv/bin/python3 -c "import torch; v = torch.__version__; print(v); assert '+rocm' in v, 'torch was replaced: ' + v"
 # 5. Model weights (folder exists only on the build machine, after hf download)
 # COPY models/Qwen3-VL-8B-Instruct /models/Qwen3-VL-8B-Instruct
 
