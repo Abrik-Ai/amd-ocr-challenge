@@ -10,7 +10,7 @@ COPY requirements.txt /app/
 RUN /opt/venv/bin/pip install --no-cache-dir -r /app/requirements.txt \
  && /opt/venv/bin/python3 -c "import torch; v = torch.__version__; print(v); assert '+rocm' in v, 'torch was replaced: ' + v"
 # 5. Model weights (folder exists only on the build machine, after hf download)
-# COPY models/Qwen3-VL-8B-Instruct /models/Qwen3-VL-8B-Instruct
+COPY models/Qwen3-VL-8B-Instruct /models/Qwen3-VL-8B-Instruct
 
 # 4. Our code into /app (the five .py files)
 COPY app.py server.py ocr.py prompt.py /app/ 
